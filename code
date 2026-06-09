@@ -1,0 +1,85 @@
+import os
+import logging
+from dotenv import load_dotenv
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
+
+# Load API keys
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+
+# Logging
+logging.basicConfig(
+    filename="trading_bot.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+# Binance Client
+client = Client(API_KEY, API_SECRET)
+client.FUTURES_URL = "https://testnet.binancefuture.com/fapi"
+
+try:
+    # User Input
+    symbol = input("Enter Symbol (BTCUSDT): ").upper()
+    side = input("Enter Side (BUY/SELL): ").upper()
+    order_type = input("Enter Order Type (MARKET/LIMIT): ").upper()
+    quantity = float(input("Enter Quantity: "))
+
+    # Validation
+    if side not in ["BUY", "SELL"]:
+        raise ValueError("Side must be BUY or SELL")
+
+    if order_type not in ["MARKET", "LIMIT"]:
+        raise ValueError("Order Type must be MARKET or LIMIT")
+
+    if quantity <= 0:
+        raise ValueError("Quantity must be greater than 0")
+
+    print("\n========== ORDER REQUEST ==========")
+    print(f"Symbol   : {symbol}")
+    print(f"Side     : {side}")
+    print(f"Type     : {order_type}")
+    print(f"Quantity : {quantity}")
+
+    if order_type == "MARKET":
+
+        response = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="MARKET",
+            quantity=quantity
+        )
+
+    else:
+
+        price = float(input("Enter Limit Price: "))
+
+        response = client.futures_create_order(
+            symbol=symbol,
+            side=side,
+            type="LIMIT",
+            quantity=quantity,
+            price=price,
+            timeInForce="GTC"
+        )
+
+    logging.info(response)
+
+    print("\n========== ORDER RESPONSE ==========")
+    print("Order ID      :", response.get("orderId"))
+    print("Status        :", response.get("status"))
+    print("Executed Qty  :", response.get("executedQty"))
+    print("Avg Price     :", response.get("avgPrice", "N/A"))
+
+    print("\nSUCCESS")
+
+except BinanceAPIException as e:
+    logging.error(str(e))
+    print("\nBinance API Error:", e)
+
+except Exception as e:
+    logging.error(str(e))
+    print("\nError:", e)
